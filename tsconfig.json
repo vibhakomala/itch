@@ -1,0 +1,32 @@
+{
+  "files": [],
+  "references": [
+    {
+      "path": "packages/protocol"
+    },
+    {
+      "path": "packages/core"
+    },
+    {
+      "path": "packages/packs"
+    },
+    {
+      "path": "packages/vision"
+    },
+    {
+      "path": "packages/scratch"
+    },
+    {
+      "path": "packages/devtools"
+    },
+    {
+      "path": "packages/test-utils"
+    },
+    {
+      "path": "apps/vision-demo"
+    },
+    {
+      "path": "apps/player"
+    }
+  ]
+}

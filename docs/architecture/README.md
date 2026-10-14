@@ -1,0 +1,15 @@
+# Architecture baseline
+
+Reference: ITCH-ROADMAP-001 v0.1, architecture B2, ARC-001–ARC-005. Recognition and Scratch share an application environment while retaining separate packages and lifecycles.
+
+`@itch/protocol` is the compatibility boundary: a `TangibleObject` has `trackId`, `pieceId`, `packId`, normalized `x`/`y`, `rotationDeg`, `confidence`, and optional `bbox`. A `TangibleScene` has `revision`, `timestampMs`, `workspaceStatus`, `objects`, optional rows of track IDs, and optional derived state. The roadmap's four workspace states are `uncalibrated`, `calibrating`, `ready`, and `degraded`. Transport validation lives in protocol and is reexported by core.
+
+`@itch/core` has no camera or Scratch dependency. It owns scene subscriptions, providers, scene differences, duplicate suppression and spatial interpretation. Inputs must already be stabilized: raw detection association, tracking IDs, appearance/disappearance debounce and temporal noise filtering remain Phase 2 work. `SyntheticTestProvider` publishes deterministic objects; a pack supplies their meanings. Rows order track IDs top-to-bottom and left-to-right. `derived.currentWord` is the first derived word, and `derived.words` exposes all words. Grouping tolerances are configurable; no language model or vocabulary lookup is involved.
+
+`@itch/vision` supplies `FrameSource` and a sequential `VisionPipeline`: workspace detection → rectification → piece detection → piece recognition. Phase 0's default stages deliberately return an uncalibrated, empty scene. `LocalVisionProvider` keeps at most one frame in flight, exposes timings and missed processing intervals, and fences late results after stop. Camera permission, track cleanup and frame sampling belong here.
+
+`@itch/devtools` records/replays scene timelines, captures representative local still PNGs with metadata and produces capability reports. A ten-second synthetic scene recorder/replayer test is automated; continuous camera/frame-sequence recording remains planned. The Vision Demo displays the camera and synthetic state with explicit source labels. Diagnostics are development tools; the later production player should show preview only on request (NFR-009).
+
+`@itch/scratch` wraps a provider in `ScratchBridge` and `ItchScratchExtension`. Reporters describe current word, piece count, presence and normalized pose. Scene and word events invoke the injected runtime's `startHats`. The isolated registration helper depends on a private Scratch extension-manager method and is provisional. A test against the shipped source of `@scratch/scratch-vm` 15.2.0 registers real reporter primitives and executes a real event stack in Node. `apps/player` still supplies a mock runtime; [Scratch source inspection](scratch-source-inspection.md) records the upstream mechanics and remaining browser/player work.
+
+The [ADRs](../adr/README.md), [scope reconciliation](scope.md), [development guide](../development.md), and [test guide](../testing.md) track decisions and evidence. Remote transport, ML models, cloud services, accounts and native applications are outside this baseline.

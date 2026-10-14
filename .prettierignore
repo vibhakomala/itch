@@ -1,0 +1,10 @@
+node_modules
+dist
+.tools
+.pnpm-store
+pnpm-lock.yaml
+docs/reference/roadmap-v0.1.txt
+*.svg
+coverage
+playwright-report
+test-results

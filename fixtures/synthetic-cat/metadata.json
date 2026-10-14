@@ -1,0 +1,9 @@
+{
+  "schemaVersion": "0.1",
+  "caseId": "synthetic-cat",
+  "source": "synthetic",
+  "packId": "itch.starter.v0",
+  "durationMs": 10000,
+  "camera": null,
+  "lighting": "not applicable"
+}

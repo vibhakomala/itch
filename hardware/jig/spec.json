@@ -1,0 +1,14 @@
+{
+  "specVersion": "0.1-draft",
+  "status": "initial-unvalidated-assumptions",
+  "units": "mm",
+  "base": { "width": 160, "depth": 110 },
+  "cameraHeightRange": [60, 120],
+  "mirrorFace": { "width": 40, "height": 50 },
+  "mirrorTiltFromHorizontalDeg": [35, 55],
+  "mirrorCameraOffsetRange": [10, 40],
+  "workspace": { "width": 210, "height": 148, "orientation": "landscape" },
+  "deviceFitVerified": false,
+  "opticsVerified": false,
+  "bomVerified": false
+}

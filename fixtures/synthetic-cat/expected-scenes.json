@@ -1,0 +1,104 @@
+{
+  "schemaVersion": "0.1",
+  "scenes": [
+    {
+      "revision": 1,
+      "timestampMs": 0,
+      "workspaceStatus": "ready",
+      "objects": [
+        {
+          "trackId": "synthetic-C",
+          "pieceId": "letter:C",
+          "packId": "itch.starter.v0",
+          "x": 0.25,
+          "y": 0.5,
+          "rotationDeg": 0,
+          "confidence": 1
+        },
+        {
+          "trackId": "synthetic-A",
+          "pieceId": "letter:A",
+          "packId": "itch.starter.v0",
+          "x": 0.375,
+          "y": 0.5,
+          "rotationDeg": 0,
+          "confidence": 1
+        },
+        {
+          "trackId": "synthetic-T",
+          "pieceId": "letter:T",
+          "packId": "itch.starter.v0",
+          "x": 0.5,
+          "y": 0.5,
+          "rotationDeg": 0,
+          "confidence": 1
+        }
+      ],
+      "rows": [["synthetic-C", "synthetic-A", "synthetic-T"]],
+      "derived": { "words": ["CAT"], "currentWord": "CAT" }
+    },
+    {
+      "revision": 2,
+      "timestampMs": 5000,
+      "workspaceStatus": "ready",
+      "objects": [
+        {
+          "trackId": "synthetic-C",
+          "pieceId": "letter:C",
+          "packId": "itch.starter.v0",
+          "x": 0.25,
+          "y": 0.5,
+          "rotationDeg": 0,
+          "confidence": 1
+        },
+        {
+          "trackId": "synthetic-T",
+          "pieceId": "letter:T",
+          "packId": "itch.starter.v0",
+          "x": 0.5,
+          "y": 0.5,
+          "rotationDeg": 0,
+          "confidence": 1
+        }
+      ],
+      "rows": [["synthetic-C", "synthetic-T"]],
+      "derived": { "words": ["CT"], "currentWord": "CT" }
+    },
+    {
+      "revision": 3,
+      "timestampMs": 10000,
+      "workspaceStatus": "ready",
+      "objects": [
+        {
+          "trackId": "synthetic-C",
+          "pieceId": "letter:C",
+          "packId": "itch.starter.v0",
+          "x": 0.25,
+          "y": 0.5,
+          "rotationDeg": 0,
+          "confidence": 1
+        },
+        {
+          "trackId": "synthetic-A",
+          "pieceId": "letter:A",
+          "packId": "itch.starter.v0",
+          "x": 0.375,
+          "y": 0.5,
+          "rotationDeg": 0,
+          "confidence": 1
+        },
+        {
+          "trackId": "synthetic-T",
+          "pieceId": "letter:T",
+          "packId": "itch.starter.v0",
+          "x": 0.5,
+          "y": 0.5,
+          "rotationDeg": 0,
+          "confidence": 1
+        }
+      ],
+      "rows": [["synthetic-C", "synthetic-A", "synthetic-T"]],
+      "derived": { "words": ["CAT"], "currentWord": "CAT" }
+    }
+  ]
+}

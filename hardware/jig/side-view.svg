@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="297mm" height="160mm" viewBox="0 0 297 160">
+  <title>ITCH mirror-jig side-view assumptions</title>
+  <desc>Illustrative adjustable layout; dimensions are provisional and optics/device fit are unvalidated.</desc>
+  <rect width="297" height="160" fill="white"/>
+  <g font-family="sans-serif" fill="#222">
+    <text x="12" y="15" font-size="6">ITCH mirror-jig · dimensional spike</text>
+    <text x="12" y="23" font-size="3.5">DRAFT / illustrative layout / no built prototype / units mm</text>
+  </g>
+  <g fill="none" stroke="#222" stroke-width="1">
+    <path d="M12 130H285"/><rect x="15" y="126" width="110" height="4"/>
+    <path d="M42 126L75 57L82 60L49 126Z"/>
+    <path d="M79 54L94 69" stroke-width="2"/>
+    <path d="M79 54L79 91L219 126" stroke="#777" stroke-dasharray="2 2"/>
+    <path d="M160 128H270" stroke-width="2"/>
+    <path d="M10 57V126 M7 57H13 M7 126H13 M15 139H125 M15 136V142 M125 136V142" stroke-width=".4"/>
+  </g>
+  <circle cx="79" cy="54" r="2" fill="#222"/>
+  <g font-family="sans-serif" fill="#222" font-size="3.5">
+    <text x="17" y="49">Front camera, height 60–120 adjustable</text>
+    <text x="98" y="62">40 × 50 mirror, tilt 35–55°</text>
+    <text x="86" y="90">Illustrative optical path</text>
+    <text x="160" y="121">A5 landscape mat; reposition for coverage</text>
+    <text x="48" y="147">110 base depth</text>
+    <text x="155" y="147">Base width (out of plane): 160</text>
+    <text x="16" y="102">Device/support</text>
+  </g>
+</svg>

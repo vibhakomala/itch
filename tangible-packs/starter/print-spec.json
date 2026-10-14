@@ -1,0 +1,19 @@
+{
+  "specVersion": "0.1-draft",
+  "packId": "itch.starter.v0",
+  "status": "draft-no-recognizer",
+  "tileWidthMm": 40,
+  "tileHeightMm": 40,
+  "substrate": "flat-matte-paper-or-cardboard",
+  "printScale": "100%-actual-size",
+  "identityEncoding": null,
+  "recognitionImplemented": false,
+  "reservedMarkerIds": {
+    "letter:C": "starter-001",
+    "letter:A": "starter-002",
+    "letter:T": "starter-003",
+    "letter:D": "starter-004",
+    "letter:O": "starter-005",
+    "letter:G": "starter-006"
+  }
+}

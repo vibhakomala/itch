@@ -1,0 +1,98 @@
+:root {
+  font-family: system-ui, sans-serif;
+  color: #183b35;
+  background: #f4f5ef;
+}
+body {
+  margin: 0;
+}
+main {
+  max-width: 850px;
+  margin: 0 auto;
+  padding: 2rem 1.25rem;
+}
+header {
+  margin-bottom: 1.5rem;
+}
+h1 {
+  font-size: clamp(2rem, 5vw, 3rem);
+  margin: 0.3rem 0;
+}
+h2 {
+  font-size: 1.1rem;
+  margin-top: 0;
+}
+.eyebrow {
+  font-size: 0.85rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.notice {
+  padding: 1rem;
+  border-left: 4px solid #9f6b25;
+  background: #fff3d9;
+  color: #624515;
+}
+section,
+details {
+  margin-top: 1rem;
+  padding: 1.2rem;
+  background: white;
+  border: 1px solid #d4dfd8;
+  border-radius: 0.6rem;
+}
+.buttons {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+button {
+  font: inherit;
+  padding: 0.7rem 1.5rem;
+  border: 0;
+  border-radius: 0.3rem;
+  background: #184e41;
+  color: white;
+  cursor: pointer;
+}
+button:hover {
+  background: #286853;
+}
+button:focus-visible,
+a:focus-visible,
+summary:focus-visible {
+  outline: 3px solid #ad5b13;
+  outline-offset: 3px;
+}
+dl {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 1rem;
+}
+dt {
+  color: #52675e;
+  font-size: 0.85rem;
+}
+dd {
+  margin: 0.35rem 0 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+pre {
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 0.85rem;
+  color: #23483f;
+}
+footer {
+  margin-top: 2rem;
+  color: #52675e;
+  font-size: 0.85rem;
+}
+a {
+  color: #184e41;
+}
+summary {
+  cursor: pointer;
+}

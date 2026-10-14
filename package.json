@@ -1,0 +1,42 @@
+{
+  "name": "itch",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.20.0",
+  "engines": {
+    "node": "^24.0.0 || ^26.0.0",
+    "pnpm": ">=10 <11"
+  },
+  "scripts": {
+    "dev": "pnpm build:packages && pnpm --filter @itch/vision-demo dev",
+    "dev:player": "pnpm build:packages && pnpm --filter @itch/player dev",
+    "build:packages": "pnpm -r --filter ./packages/** build",
+    "build": "pnpm -r build",
+    "typecheck": "tsc -b && tsc -p tsconfig.tests.json",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "pnpm build:packages && playwright test",
+    "lint": "eslint . && node scripts/check-boundaries.mjs",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "benchmark": "pnpm build:packages && node scripts/benchmark.mjs"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@playwright/test": "1.64.0",
+    "@types/node": "^24.0.0",
+    "eslint": "10.12.0",
+    "globals": "^17.0.0",
+    "prettier": "3.9.10",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.71.2",
+    "vite": "8.3.4",
+    "vitest": "5.0.4",
+    "@itch/protocol": "workspace:*",
+    "@itch/core": "workspace:*",
+    "@itch/vision": "workspace:*",
+    "@itch/devtools": "workspace:*",
+    "@itch/packs": "workspace:*"
+  }
+}

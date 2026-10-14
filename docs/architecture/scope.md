@@ -1,0 +1,18 @@
+# Roadmap and bootstrap reconciliation
+
+Authority: the supplied **ITCH Product & Technical Roadmap v0.1**, document ID ITCH-ROADMAP-001, dated 14 August 2026. The pasted bootstrap brief supplements it where compatible. This repository is a runnable Phase 0 baseline, not the full hardware-integrated V0 MVP.
+
+| Topic                 | Implemented interpretation                                                                                                                                                                         |
+| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Architecture          | B2: local reusable engine plus Scratch consumer; provider separation is retained.                                                                                                                  |
+| Scene names           | Roadmap `trackId`, `pieceId`, `packId`, `rotationDeg`, `timestampMs` and `workspaceStatus` are canonical. Brief examples using `instanceId`, `id` or `timestamp` are not alternate public formats. |
+| Workspace orientation | A5 **landscape 210 × 148 mm**, as the roadmap's Phase 1 geometry states. Portrait examples and `420 × 594` in the brief are not used as the canonical baseline.                                    |
+| Starter pieces        | C, A, T, D, O, G meet the brief's explicit CAT/DOG request. The roadmap allows A/C/G/O/T plus a digit **or another confusable class**; D exercises the O/D distinction.                            |
+| Recognition           | Interfaces and explicit no-op stages only. No fiducial family or V0 identity encoding is selected while ADR-003/004 remain open.                                                                   |
+| Scratch               | Hello metadata/reporters and provider-to-event contracts are tested with mocks and a real Node VM source integration. Browser registration, .sb3 loading and distribution remain unverified.       |
+| Fixture evidence      | Deterministic synthetic scene replay supports the Phase 0 scaffold. Camera-derived ten-second recording/replay evidence must be captured on real devices.                                          |
+| Hardware              | Initial dimensional specs and print drafts. No functional jig prototype or print-recognition accuracy is claimed.                                                                                  |
+| Phase IDs             | Use the roadmap's P0–P9 and T-Px IDs, which differ from the brief's implementation-step numbering.                                                                                                 |
+| ADR IDs               | Reserve roadmap ADR-001–007; additional bootstrap choices start at ADR-008.                                                                                                                        |
+
+Synthetic row interpretation and scene-difference unit tests support the architectural spike. Raw detection tracking, debounce and temporal stabilization are not implemented. Representative still export and scene timeline replay are available; a continuous camera-sequence recorder is not. These tests do not satisfy physical recognition accuracy, tracking under occlusion, mirror correction, or same-device Scratch/camera performance acceptance. Phase 0 remains open until current iPad/iPhone-class and Android capability/camera probes and same-device browser Scratch evidence exist. Phase 1 recognition work follows that gate and deterministic replay evidence.

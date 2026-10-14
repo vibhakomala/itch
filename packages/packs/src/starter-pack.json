@@ -1,0 +1,13 @@
+{
+  "schemaVersion": "1.0",
+  "packId": "itch.starter.v0",
+  "displayName": "ITCH Starter Letters",
+  "pieces": [
+    { "pieceId": "letter:C", "display": "C", "semantic": { "type": "letter", "value": "C" } },
+    { "pieceId": "letter:A", "display": "A", "semantic": { "type": "letter", "value": "A" } },
+    { "pieceId": "letter:T", "display": "T", "semantic": { "type": "letter", "value": "T" } },
+    { "pieceId": "letter:D", "display": "D", "semantic": { "type": "letter", "value": "D" } },
+    { "pieceId": "letter:O", "display": "O", "semantic": { "type": "letter", "value": "O" } },
+    { "pieceId": "letter:G", "display": "G", "semantic": { "type": "letter", "value": "G" } }
+  ]
+}

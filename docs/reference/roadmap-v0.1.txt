@@ -1,0 +1,1251 @@
+ITCH
+Interactive Tangibles for Creative Hands
+Product & Technical Roadmap
+Reference Architecture: B2 — Local Tangibles Engine + Scratch Consumer
+
+
+Document ID
+ITCH-ROADMAP-001
+Version
+0.1
+Status
+Baseline for implementation
+Date
+14 August 2026
+Primary target
+Scratch projects played on tablet/phone using the same device camera; desktop creation supported
+
+Purpose: the living product/architecture baseline used to scope, implement, test, and review ITCH development. Requirements and phase IDs in this document should be referenced in issues, commits, test reports, and design decisions.
+
+1. Executive Product Definition
+ITCH is an open tangible-computing toolkit that lets a child or learner manipulate physical pieces, drawings, and eventually physical code blocks in a camera-visible workspace and use those actions as inputs to interactive Scratch projects. The initial reference experience runs sensing, recognition, the ITCH scene model, and Scratch playback on the same tablet or phone. A remote-phone provider remains a supported later deployment mode but is not part of the core execution path.
+1.1 Product principles
+Open first: file formats, protocols, tangible specifications, calibration assets, and reference hardware should be openly documented and remixable.
+Local first: the core experience must work without a cloud vision service and should not require images to leave the device.
+Low-cost fabrication: paper/cardboard must be a valid entry-level tangible medium; 3D printing and laser cutting are enhancements, not requirements.
+Scratch-native semantics: Scratch creators should consume meaningful concepts such as “current word”, “piece present?”, and “when scene changes”, not computer-vision jargon.
+Determinism before ML: use calibration geometry, fiducials, piece design, and constrained classifiers before introducing larger general-purpose models.
+Provider separation: camera/recognition is independent of Scratch. Scratch is one consumer of the scene model.
+Progressive capability: V0 letters/numbers → V1 drawings → V2 physical code blocks; each version must remain usable independently.
+Child-safe by default: no face recognition, no identity tracking, no cloud image retention, and clear camera-use indicators.
+1.2 In scope / out of scope
+In scope
+Explicitly out of scope for the initial roadmap
+• A5 camera-visible workspace
+• Full unrestricted OCR of arbitrary household objects
+• Letters and numbers as V0 tangibles
+• General object recognition
+• Position/orientation tracking
+• Cloud-dependent inference
+• Scratch extension/API
+• Exact reproduction of proprietary Osmo hardware/content
+• Same-device tablet/phone play mode
+• Automatic semantic recognition of arbitrary child drawings in V1.0
+• Printable calibration mat and open jig reference
+• Full Scratch language coverage in first code-block release
+• Drawing capture/vectorization in V1
+• Native iOS/Android app as a prerequisite for MVP
+• Physical code-block parsing in V2
+
+• Remote camera provider after local reference path is stable
+
+1.3 Product success metrics
+First-time setup: a new user can open a compatible project, allow camera access, place the mirror jig/calibration mat, and reach a working state without developer tools.
+Interaction latency: physical change to Scratch-observable state should feel immediate; target median ≤150 ms for V0 local mode and hard acceptance ≤250 ms on the baseline device.
+Recognition: V0 target ≥99% piece identity accuracy under supported lighting and ≥98% scene-state accuracy across the acceptance test set.
+Robustness: no false “add/remove” event from a single bad frame; scene events must be temporally stabilized.
+Portability: reference implementation works on at least one current iPad-class device and one current Android tablet/phone browser before V0 public release.
+Community: all tangible-pack definitions, calibration assets, and starter projects are documented enough for an external contributor to create a new pack without modifying the vision core.
+2. Reference Architecture
+B2 is the reference architecture. Recognition is implemented as a reusable JavaScript/TypeScript library inside the same page/application environment as the Scratch runtime, but it remains logically separate from the Scratch extension. This preserves standalone play while keeping the engine reusable outside Scratch.
+Device┌─────────────────────────────────────────────────────────────┐│ Camera / getUserMedia                                      ││        ↓                                                   ││ @itch/vision                                               ││ calibration → rectification → detection → recognition      ││        ↓                                                   ││ @itch/core                                                 ││ tracking → stabilization → spatial interpretation → scene  ││        ↓                                                   ││ TangiblesProvider interface                                ││        ↓                                                   ││ @itch/scratch                                              ││ Scratch extension blocks / events / reporters              ││        ↓                                                   ││ Scratch runtime / player                                   │└─────────────────────────────────────────────────────────────┘
+2.1 Logical packages
+ID
+Requirement
+Priority
+Verification
+Owner/Layer
+ARC-001
+@itch/core owns device-independent scene types, temporal stabilization, tracking IDs, pack manifests, and provider interfaces.
+MUST
+Unit/API tests
+Core
+ARC-002
+@itch/vision owns camera frame processing, calibration, rectification, segmentation, feature extraction, and classifiers.
+MUST
+Vision fixture tests
+Vision
+ARC-003
+@itch/scratch adapts ITCH scene/events into Scratch extension blocks and must not contain recognition logic.
+MUST
+Architecture lint + integration tests
+Scratch
+ARC-004
+@itch/packs contains schemas/reference packs for letters, numbers, and later domains.
+SHOULD
+Schema tests
+Content
+ARC-005
+@itch/devtools provides camera preview, overlays, diagnostics, recording/replay, and fixture capture.
+MUST
+Manual + smoke tests
+Tooling
+ARC-006
+@itch/remote may implement a remote provider later without changing the public @itch/core scene API.
+COULD
+Provider contract tests
+Remote
+
+2.2 Scene model — initial contract
+type TangibleId = string;interface TangibleObject {  trackId: string;          // ephemeral stable ID while object remains visible  pieceId: TangibleId;      // semantic ID, e.g. "letter:A"  packId: string;           // e.g. "itch.alphanumeric.v0"  x: number;                // normalized workspace coordinate [0,1]  y: number;  rotationDeg: number;  confidence: number;       // [0,1]  bbox?: {x:number; y:number; w:number; h:number};}interface TangibleScene {  revision: number;  timestampMs: number;  workspaceStatus: "uncalibrated" | "calibrating" | "ready" | "degraded";  objects: TangibleObject[];  rows?: string[][];  derived?: Record<string, unknown>; // e.g. currentWord}
+The scene model is the primary compatibility boundary. Camera implementation, classifier, Scratch version, and hardware jig may evolve independently as long as this contract is preserved or versioned explicitly.
+2.3 TangiblesProvider contract
+interface TangiblesProvider {  start(): Promise<void>;  stop(): Promise<void>;  getScene(): TangibleScene;  onSceneChanged(cb: (scene:TangibleScene) => void): Unsubscribe;  onObjectAdded(cb: (object:TangibleObject) => void): Unsubscribe;  onObjectRemoved(cb: (object:TangibleObject) => void): Unsubscribe;  getStatus(): ProviderStatus;}
+LocalTangiblesProvider is the Phase 2/3 implementation. RemoteTangiblesProvider is later and must satisfy the same contract.
+3. Cross-Cutting Requirements
+ID
+Requirement
+Priority
+Verification
+Owner/Layer
+NFR-001
+Core local play shall not require Internet access after project/assets are loaded.
+MUST
+Offline acceptance test
+Platform
+NFR-002
+No camera frames shall be transmitted off-device in local mode.
+MUST
+Network inspection + code review
+Privacy
+NFR-003
+Recognition pipeline shall support deterministic replay from recorded test fixtures.
+MUST
+Replay regression suite
+Testing
+NFR-004
+Coordinate system shall be normalized to rectified A5 workspace and independent of camera resolution.
+MUST
+Geometry tests
+Core
+NFR-005
+All public interfaces and pack schemas shall be versioned.
+MUST
+Schema/API checks
+Core
+NFR-006
+Minimum supported frame processing target: 10 Hz; preferred 15–30 Hz depending on device.
+SHOULD
+Performance benchmark
+Vision
+NFR-007
+A single misclassified frame shall not emit a semantic add/remove/change event.
+MUST
+Temporal noise tests
+Core
+NFR-008
+Debug mode shall expose rectified frame, contours, labels, confidence, FPS, and scene JSON.
+MUST
+Manual acceptance
+Devtools
+NFR-009
+Production play mode shall not display raw camera imagery unless the project/user explicitly requests a preview.
+SHOULD
+UX test
+Privacy/UX
+NFR-010
+V0 hardware BOM beyond the user device should target low single-digit USD equivalent using printed mat, simple mirror, and cardboard/printed jig.
+SHOULD
+BOM review
+Hardware
+
+4. Development Workflow and Quality Gates
+Every phase produces runnable output and test evidence. A phase is not complete because code exists; it is complete only when its exit gate passes. Issues and commits should reference requirement/test IDs where practical.
+4.1 Recommended repository structure
+itch/├── packages/│   ├── core/│   ├── vision/│   ├── scratch/│   ├── packs/│   └── devtools/├── hardware/│   ├── jig/│   └── workspace/├── fixtures/│   ├── recorded-video/│   └── expected-scenes/├── examples/│   └── scratch/├── docs/│   ├── architecture/│   ├── protocol/│   └── contributing/└── tools/
+4.2 Engineering practices
+TypeScript for public packages; strict type checking enabled.
+Unit tests for scene logic and pack parsing; deterministic frame/fixture tests for vision.
+Golden-fixture regression tests: recorded frame sequence + expected scene timeline.
+Performance benchmark script that reports capture FPS, processing FPS, median/p95 latency, CPU time if available, and dropped frames.
+Feature flags for experimental recognizers so Scratch-facing API remains stable.
+Architecture Decision Records (ADRs) for irreversible or cross-package choices such as marker family, classifier type, and Scratch distribution strategy.
+No requirement to fork Scratch until the smallest possible external/custom-extension path has been validated; if a fork is required for distribution, isolate the delta.
+Phase 0 — Product Baseline, Toolchain, and Technical Spikes
+Phase objective. Remove the highest architectural uncertainties before building user-facing recognition.
+Outputs
+Monorepo scaffold and CI
+Canonical scene-model and provider TypeScript interfaces
+Browser capability probe for target devices
+Scratch integration spike (“hello extension”)
+Camera acquisition + raw preview spike
+Fixture recorder/replayer skeleton
+Initial mirror-jig and A5 workspace dimensional spec
+ADR-001: Scratch integration strategy; ADR-002: camera/processing thread strategy
+Implementation details
+Use a modern JS monorepo toolchain (npm/pnpm workspace acceptable); avoid framework lock-in in core packages.
+Prototype getUserMedia on same-device mobile browser and record actual resolutions, aspect ratios, camera selection behavior, orientation changes, and permission recovery.
+Investigate use of Web Worker and OffscreenCanvas where available. The main UI/Scratch thread must remain responsive even if the vision pipeline temporarily slows.
+Create a minimal Scratch extension with one reporter returning a hardcoded ITCH version and one boolean “ITCH ready?” block. This validates build, registration, and runtime plumbing before CV work.
+Build a fixture recorder capable of saving frame sequences or representative stills plus metadata. Regression testing depends on this from the start.
+Phase 0 requirements
+ID
+Requirement
+Priority
+Verification
+Owner/Layer
+P0-001
+A camera preview can be opened from the target browser with explicit permission.
+MUST
+T-P0-01
+Vision
+P0-002
+Scratch can load/register a prototype ITCH extension in the chosen development environment.
+MUST
+T-P0-02
+Scratch
+P0-003
+Core packages compile independently from Scratch.
+MUST
+CI
+Core
+P0-004
+A recorded fixture can be replayed without a live camera.
+MUST
+T-P0-03
+Testing
+P0-005
+Device capability probe records browser, OS, camera mode, resolution, FPS, WebGL/WebGPU availability, Worker and OffscreenCanvas support.
+SHOULD
+T-P0-04
+Devtools
+
+Tests
+Test ID
+Test / scenario
+Method
+Pass criterion
+Automation target
+T-P0-01
+Camera smoke test on baseline iPad/iPhone-class and Android device
+Manual/device
+Live preview ≥10 FPS for 2 minutes without fatal error
+Partial
+T-P0-02
+Scratch hello-extension
+Integration
+Reporter returns expected version; event block can execute
+Yes
+T-P0-03
+Fixture record/replay
+Integration
+Recorded 10 s sequence replays deterministically
+Yes
+T-P0-04
+Capability matrix
+Manual/scripted
+JSON report produced on each baseline device
+Partial
+
+Exit gate / Definition of Done
+Reference architecture compiles and runs end-to-end with dummy data.
+Scratch extension receives a mocked TangibleScene through TangiblesProvider.
+At least two mobile device classes have been probed and no blocker to same-device camera + Scratch playback is found.
+No recognition work proceeds until deterministic fixture replay exists.
+Phase 1 — Workspace Optics, Calibration, and Rectification
+Phase objective. Make arbitrary supported phone/tablet+jig geometry look like the same canonical A5 workspace to the recognition engine.
+Outputs
+A5 calibration mat v0.1 (printable PDF/SVG)
+Four-corner/fiducial detection
+Homography calculation and rectified canonical image
+Calibration quality score and failure states
+Adjustable mirror-jig prototype and dimensions
+Calibration/debug overlay
+Calibration fixture dataset across angles/lighting
+Implementation details
+Define a canonical workspace pixel size independent of capture resolution; initial recommendation 840×592 or equivalent 10:7 ratio matching A5 landscape. Keep internal coordinates normalized.
+Use four high-contrast fiducials near workspace corners. Marker family is an ADR: simple custom corner marks may suffice; ArUco/AprilTag-like markers are candidates if licensing/implementation footprint is acceptable.
+Estimate homography from detected corner points. Reject calibration if quadrilateral geometry is implausible, too small in frame, severely skewed, or markers are ambiguous.
+Apply mirror compensation once in the camera transform so downstream scene coordinates remain intuitive (left on mat = left in scene).
+Calibration should persist for a session but continuously verify drift at low cost. Do not recompute full setup every frame unless needed.
+Phase 1 requirements
+ID
+Requirement
+Priority
+Verification
+Owner/Layer
+P1-001
+All four workspace anchors are detected automatically in supported setup.
+MUST
+T-P1-01
+Vision
+P1-002
+Rectified workspace maps physical corners to canonical image within tolerance.
+MUST
+T-P1-02
+Vision
+P1-003
+Horizontal mirror inversion is corrected before object coordinates are published.
+MUST
+T-P1-03
+Vision
+P1-004
+System reports explicit ready/degraded/uncalibrated state.
+MUST
+T-P1-04
+Core
+P1-005
+Minor jig/camera movement can be detected and calibration refreshed without restart.
+SHOULD
+T-P1-05
+Vision
+
+Tests
+Test ID
+Test / scenario
+Method
+Pass criterion
+Automation target
+T-P1-01
+Anchor detection matrix
+Fixture + live
+≥99% successful calibration across supported test images
+Yes
+T-P1-02
+Rectification accuracy
+Printed grid + measured landmarks
+Mean mapping error ≤1.5% of workspace width; max ≤3%
+Yes/fixture
+T-P1-03
+Mirror orientation
+Known asymmetric pattern
+Scene orientation matches physical mat
+Yes
+T-P1-04
+Failure-state test
+Occlude/move anchors
+No “ready” state when calibration is invalid
+Yes
+T-P1-05
+Drift recovery
+Move jig slightly
+System returns to ready without page reload
+Partial
+
+Exit gate / Definition of Done
+Canonical rectified A5 output is stable across baseline devices.
+Downstream algorithms can operate entirely on rectified frames and normalized coordinates.
+A printable calibration mat and one functional jig prototype exist.
+Phase 2 — V0 Vision: Tangible Detection, Identity, and Tracking
+Phase objective. Reliably detect, identify, locate, and stabilize a constrained set of letter/number tiles.
+Scope decision
+Start with a six-piece micro-pack (A, C, G, O, T plus one digit or other deliberately confusable class), then scale to A–Z and 0–9 only after the full pipeline is stable. Human-visible glyph recognition may be compared with a machine-readable border/marker encoding. The project should favor deterministic identity if the visual design remains child-friendly.
+Outputs
+Tile physical specification v0.1
+Micro-pack printable SVG/PDF
+Segmentation/contour detector
+Identity recognizer
+Orientation estimation
+Multi-object tracker with stable trackId
+Temporal stabilization/debounce
+Scene JSON + debug overlays
+Expanded alphanumeric pack after micro-pack gate
+Golden vision dataset
+Implementation pipeline
+rectified frame  → illumination normalization  → candidate tile segmentation  → geometric filtering  → crop / normalize  → identity decode or classifier  → pose estimate  → association with previous frame  → confidence smoothing  → scene stabilization  → TangibleScene
+Phase 2 requirements
+ID
+Requirement
+Priority
+Verification
+Owner/Layer
+P2-001
+Detect 1–10 supported tiles simultaneously in A5 workspace.
+MUST
+T-P2-01
+Vision
+P2-002
+Publish pieceId, x, y, rotationDeg, confidence, and trackId for each stable tile.
+MUST
+T-P2-02
+Core/Vision
+P2-003
+TrackId remains stable while a tile moves continuously without leaving view.
+MUST
+T-P2-03
+Tracking
+P2-004
+No semantic add/remove event from a one-frame miss.
+MUST
+T-P2-04
+Core
+P2-005
+V0 identity accuracy reaches ≥99% on supported-condition validation set.
+MUST
+T-P2-05
+Vision
+P2-006
+System tolerates ordinary classroom lighting variation and modest shadows.
+MUST
+T-P2-06
+Vision
+P2-007
+Overlapping/occluded pieces are either resolved or explicitly excluded without hallucinating identity.
+SHOULD
+T-P2-07
+Vision
+P2-008
+Full A–Z + 0–9 pack is supported after micro-pack acceptance.
+SHOULD
+T-P2-08
+Content/Vision
+
+Tests
+Test ID
+Test / scenario
+Method
+Pass criterion
+Automation target
+T-P2-01
+Multi-tile count
+Fixture/live
+Correct count for 1,2,5,10 tiles across positions
+Yes
+T-P2-02
+Pose accuracy
+Measured grid/rotation jig
+Position median error ≤2% workspace dimension; angle median ≤5°
+Yes
+T-P2-03
+Tracking stability
+Scripted hand movement recording
+No unintended trackId change during continuous visibility
+Yes
+T-P2-04
+Temporal noise
+Inject dropped/misclassified frames
+No false add/remove under configured debounce window
+Yes
+T-P2-05
+Identity validation
+Held-out fixture set
+≥99% per-piece identity; confusion matrix reviewed
+Yes
+T-P2-06
+Lighting matrix
+Bright/dim/warm/cool/partial shadow
+Meets identity target within declared operating envelope
+Partial
+T-P2-07
+Occlusion behavior
+Partial overlaps
+No high-confidence wrong identity; degraded confidence allowed
+Yes
+T-P2-08
+36-class expansion
+Held-out fixture set
+Meets agreed per-class floor and overall target
+Yes
+
+Exit gate / Definition of Done
+Six-piece micro-pack passes full detection/identity/tracking suite before expansion.
+A–Z/0–9 expansion is data-driven and confusion pairs are explicitly reviewed.
+Golden fixtures reproduce identical semantic event sequences in CI.
+Phase 3 — Scratch Integration and Standalone Tablet MVP
+Phase objective. Deliver the first genuine ITCH experience: physical pieces driving a Scratch project on the same tablet/phone.
+Scratch-facing block design — V0
+(current word)
+<piece [A] present?>
+(number of pieces)
+(piece [1] type/value)
+(piece [1] x)
+(piece [1] y)
+(piece [1] angle)
+when scene changes
+when piece is placed
+when piece is removed
+when word changes
+(ITCH status)
+Derived spatial semantics
+The engine, not each Scratch project, should derive common structure. V0 derives left-to-right rows and a current word from tiles whose vertical alignment and spacing satisfy configurable thresholds. Raw object access remains available for advanced projects.
+Outputs
+@itch/scratch extension implementation
+Standalone player/editor development build with camera permission flow
+Current-word row grouping
+Starter Scratch project: physical CAT/DOG interaction
+Starter number demo
+Camera/calibration status UI
+Performance telemetry overlay (development only)
+Mobile usability acceptance report
+Phase 3 requirements
+ID
+Requirement
+Priority
+Verification
+Owner/Layer
+P3-001
+Scratch blocks read the current TangibleScene without direct vision dependencies.
+MUST
+T-P3-01
+Scratch
+P3-002
+Hat/event blocks fire exactly once per stabilized semantic event.
+MUST
+T-P3-02
+Scratch/Core
+P3-003
+A same-device mobile user can launch a project, grant camera permission, calibrate, and play.
+MUST
+T-P3-03
+Product
+P3-004
+Physical scene change is observable by Scratch with median end-to-end latency ≤150 ms and p95 ≤250 ms on baseline device.
+SHOULD
+T-P3-04
+Performance
+P3-005
+Word derivation is deterministic and documented.
+MUST
+T-P3-05
+Core
+P3-006
+Scratch project remains responsive during continuous camera processing.
+MUST
+T-P3-06
+Performance
+P3-007
+Camera/recognition can be stopped when project is not using ITCH.
+MUST
+T-P3-07
+Privacy/Runtime
+
+Tests
+Test ID
+Test / scenario
+Method
+Pass criterion
+Automation target
+T-P3-01
+Block reporter contract
+Automated integration
+All reporters match mocked scenes
+Yes
+T-P3-02
+Event semantics
+Automated timeline replay
+Exactly one hat event per expected transition
+Yes
+T-P3-03
+First-run mobile UX
+Manual
+New user reaches working CAT demo without dev tools
+No
+T-P3-04
+End-to-end latency
+Timestamped physical/scene test or video instrumentation
+Median ≤150 ms; p95 ≤250 ms target
+Partial
+T-P3-05
+Word grouping
+Synthetic scene permutations
+Expected rows/words under spacing/rotation cases
+Yes
+T-P3-06
+Runtime stress
+Play animation while 10 tiles move
+No sustained UI lockup; project FPS acceptable
+Partial
+T-P3-07
+Camera lifecycle
+Start/stop/reopen
+Camera indicator releases promptly and restarts cleanly
+Partial
+
+Exit gate / Definition of Done
+A child-facing Scratch demo can be played entirely on one mobile device with the mirror jig.
+No network or companion device is required.
+Scratch integration is thin: replacing LocalTangiblesProvider with a mock provider requires no block changes.
+MVP usability and latency targets are documented with measured results.
+Phase 4 — Hardware Refinement and Reproducible Kit
+Phase objective. Turn the proof-of-concept optics into a community-buildable reference kit.
+Outputs
+Jig v1 STEP/STL + dimensioned drawings
+Cardboard/laser-cut alternative
+Mirror specification and sourcing guidance
+Phone/tablet camera-position adaptability mechanism
+Calibration mat v1
+Assembly guide
+Bill of materials
+Hardware tolerance test report
+Requirements and tests
+ID
+Requirement
+Priority
+Verification
+Owner/Layer
+P4-001
+Reference jig accommodates multiple camera positions or has parameterized variants.
+MUST
+Fit matrix
+Hardware
+P4-002
+Jig returns full A5 workspace inside usable camera frame on baseline devices.
+MUST
+Optical fit test
+Hardware
+P4-003
+Assembly does not require precision alignment beyond what calibration can correct.
+MUST
+Novice assembly test
+Hardware
+P4-004
+A low-cost non-3D-printed build path is documented.
+SHOULD
+Build reproduction
+Community
+P4-005
+Mirror artifacts do not reduce V0 identity accuracy below release threshold.
+MUST
+Vision acceptance suite
+Hardware/Vision
+
+Test ID
+Test / scenario
+Method
+Pass criterion
+Automation target
+T-P4-01
+Device fit matrix
+Manual
+Defined set fits and calibrates
+No
+T-P4-02
+Rebuild test
+Independent builder follows docs
+Working jig without author intervention
+No
+T-P4-03
+Optical regression
+Run V0 fixture/live test per jig material
+Recognition threshold preserved
+Partial
+
+Exit gate / Definition of Done
+At least one independent person can reproduce the kit from published files.
+Hardware variation is absorbed by calibration within documented tolerances.
+Phase 5 — Optional Remote Camera Provider
+Phase objective. Support laptop/desktop Scratch creation/play using a paired phone as the sensor without changing the Scratch-facing API.
+Architecture
+PHONE                         COMPUTERCamera → @itch/vision → scene → transport → RemoteTangiblesProvider → @itch/scratchPreferred transport payload: scene/event data, not continuous video.
+Requirements and tests
+ID
+Requirement
+Priority
+Verification
+Owner/Layer
+P5-001
+Remote provider implements the same TangiblesProvider contract as local provider.
+MUST
+Provider contract suite
+Remote
+P5-002
+Pairing requires a user-visible action such as QR scan or short code.
+MUST
+UX/security test
+Remote
+P5-003
+Default remote transport sends semantic scene data rather than raw video.
+MUST
+Network inspection
+Privacy
+P5-004
+Temporary disconnect does not corrupt Scratch state and can recover.
+MUST
+Disconnect test
+Remote
+P5-005
+Remote mode p95 event latency target ≤350 ms on typical local network.
+SHOULD
+Latency benchmark
+Remote
+
+Test ID
+Test / scenario
+Method
+Pass criterion
+Automation target
+T-P5-01
+Provider parity
+Automated
+Same fixture scenes produce same Scratch behavior local vs remote
+Yes
+T-P5-02
+Pairing flow
+Manual
+Pair in ≤3 user actions after opening companion
+No
+T-P5-03
+Disconnect/reconnect
+Automated/manual
+State transitions to disconnected and resumes without reload
+Partial
+T-P5-04
+Network privacy
+Packet inspection
+No raw camera frames in default mode
+Partial
+
+Exit gate / Definition of Done
+Remote mode is demonstrably optional: all V0 local features remain unchanged.
+Scratch projects do not need to know which provider is active.
+Phase 6 — V1 Drawings: Physical Ink as Scratch Input
+Phase objective. Capture and vectorize drawings from the workspace without requiring general semantic drawing recognition.
+V1.0 scope
+Detect ink/mark regions inside a designated drawing zone or blank workspace.
+Remove known printed calibration/tile features from the drawing mask.
+Produce raster mask and/or simplified vector polylines.
+Expose bounding box, points/strokes, and change events to consumers.
+Provide a convenience path to reproduce the physical drawing on the Scratch stage.
+Requirements and tests
+ID
+Requirement
+Priority
+Verification
+Owner/Layer
+P6-001
+Drawing foreground is extracted from supported paper/background under supported lighting.
+MUST
+Mask IoU fixture tests
+Vision
+P6-002
+Vectorization preserves recognizable topology while reducing point count.
+MUST
+Golden vector fixtures
+Vision
+P6-003
+Drawing changes are debounced and do not continuously retrigger from camera noise.
+MUST
+Timeline tests
+Core
+P6-004
+Scratch can access or render the captured drawing with a simple high-level block/API.
+MUST
+Integration demo
+Scratch
+P6-005
+Semantic recognition of arbitrary drawings is not required for V1.0.
+MUST
+Scope review
+Product
+
+Test ID
+Test / scenario
+Method
+Pass criterion
+Automation target
+T-P6-01
+Line/shape extraction
+Fixture set
+Circle/square/path masks meet agreed IoU/topology
+Yes
+T-P6-02
+Vector simplification
+Golden fixtures
+Visual/path deviation within tolerance at reduced points
+Yes
+T-P6-03
+Live drawing update
+Manual
+Scratch rendering updates without flicker/noise storms
+Partial
+
+Exit gate / Definition of Done
+A child can draw a simple path/shape on paper and a Scratch project can reproduce/use that geometry.
+No semantic classifier is required to claim V1.0 complete.
+Phase 7 — V1.5 Optional Drawing Semantics
+Phase objective. Add constrained recognition for simple shapes/symbols after drawing capture is stable.
+Start with a closed vocabulary such as line, circle, square, triangle, arrow, star, and selected math symbols. General “what did the child draw?” recognition is a separate research track and must not destabilize the deterministic core.
+ID
+Requirement
+Priority
+Verification
+Owner/Layer
+P7-001
+Classifier exposes label plus confidence and an “unknown” outcome.
+MUST
+Classifier validation
+Vision
+P7-002
+Low-confidence inputs return unknown rather than forcing a class.
+MUST
+Threshold tests
+Vision
+P7-003
+Pack can define its own allowed drawing-symbol vocabulary.
+SHOULD
+Schema test
+Packs
+
+Exit gate / Definition of Done
+Closed-vocabulary classifier meets per-class acceptance threshold with an explicit unknown class.
+Phase 8 — V2 Physical Code Blocks
+Phase objective. Interpret machine-identifiable physical blocks as a constrained executable program, then progressively map them to Scratch semantics.
+V2 staged grammar
+Stage
+Grammar
+Examples/notes
+V2.0
+Linear commands
+move, turn, say, wait; numeric parameter tiles
+V2.1
+Event caps
+when green flag, when sprite clicked
+V2.2
+Control nesting
+repeat, forever, if; C-shaped or spatial nesting
+V2.3
+Reporters/booleans
+limited expression grammar
+V2.4
+Optional Scratch block materialization
+generate actual Scratch block stacks if technically justified
+
+Implementation details
+Code tiles should carry deterministic machine identity; OCR of printed Scratch text is not the primary recognition mechanism.
+The scene parser converts spatial relationships into an intermediate representation (IR) independent of Scratch block XML/internal serialization.
+Interpreter-first strategy: execute the IR through ITCH/Scratch adapter before attempting to programmatically mutate the Scratch workspace.
+Physical grammar should make invalid syntax visible and recoverable. Parser returns structured errors (e.g., unattached parameter, unmatched control block, ambiguous nesting).
+Only after the IR/interpreter is stable should the team evaluate whether generating actual Scratch blocks materially improves learning/product value.
+Requirements and tests
+ID
+Requirement
+Priority
+Verification
+Owner/Layer
+P8-001
+Every code tile has deterministic opcode identity and orientation.
+MUST
+Tile validation
+Vision/Packs
+P8-002
+Linear stacks parse into stable ordered IR.
+MUST
+Parser tests
+Core
+P8-003
+Parameters bind to the intended command according to documented geometry.
+MUST
+Grammar tests
+Core
+P8-004
+Invalid/ambiguous layouts produce explicit parser errors, not guessed programs.
+MUST
+Negative tests
+Core
+P8-005
+V2.0 IR can drive a Scratch sprite through a reference interpreter/adapter.
+MUST
+Integration demo
+Scratch
+P8-006
+Nested control grammar is deferred until V2.0/V2.1 are stable.
+MUST
+Scope gate
+Product
+
+Test ID
+Test / scenario
+Method
+Pass criterion
+Automation target
+T-P8-01
+Linear stack permutations
+Automated synthetic scenes
+Correct opcode order for all fixtures
+Yes
+T-P8-02
+Parameter association
+Automated
+Correct numeric binding across spacing variants
+Yes
+T-P8-03
+Invalid syntax
+Automated negative set
+No execution; structured errors returned
+Yes
+T-P8-04
+Physical-to-Scratch demo
+Live
+Physical move/turn sequence drives sprite correctly
+Partial
+T-P8-05
+Nested grammar
+Synthetic/live
+Correct AST/IR for declared subset
+Yes once V2.2 begins
+
+Exit gate / Definition of Done
+V2.0 linear physical program can be recognized, parsed, and executed deterministically.
+No direct Scratch-workspace mutation is required for V2.0 success.
+Phase 9 — Community Platform, Packs, and Public Release
+Phase objective. Make ITCH easy to remix, extend, teach with, and contribute to without understanding the vision internals.
+Outputs
+Pack manifest schema + JSON Schema
+Pack authoring guide
+SVG/STL/template generator or starter files
+Contributor guide and coding standards
+Example packs: alphanumeric, fractions, geometry/music candidate
+Example Scratch projects
+Compatibility matrix
+Public fixture contribution process
+Release/versioning policy
+License review for code, hardware, art assets, and third-party CV dependencies
+Pack manifest concept
+{  "schemaVersion": "1.0",  "packId": "itch.alphanumeric.v0",  "displayName": "ITCH Letters & Numbers",  "pieces": [    {"pieceId":"letter:A", "display":"A", "semantic":{"type":"letter","value":"A"}},    {"pieceId":"number:7", "display":"7", "semantic":{"type":"number","value":7}}  ]}
+Community requirements
+ID
+Requirement
+Priority
+Verification
+Owner/Layer
+P9-001
+A new deterministic tangible pack can be defined without editing @itch/core.
+MUST
+External pack demo
+Community
+P9-002
+Pack schema is machine-validated and versioned.
+MUST
+JSON Schema CI
+Packs
+P9-003
+Contributor can add fixtures with expected scene output for regression testing.
+MUST
+Contribution walkthrough
+Testing
+P9-004
+Hardware files are provided in editable source formats as well as fabrication exports.
+SHOULD
+Release checklist
+Hardware
+P9-005
+At least three example Scratch projects demonstrate distinct educational uses.
+SHOULD
+Release review
+Content
+
+Exit gate / Definition of Done
+An external contributor can create and test a pack following public docs.
+Release artifacts include software, fabrication files, calibration assets, tests, and example projects.
+5. Product Backlog by Release
+Release
+User-visible capability
+Phases
+Minimum demo
+Release gate
+R0 — Engineering skeleton
+Mock scene drives Scratch
+0
+Scratch reporter/events from fixture
+Architecture/tooling viable
+R1 — Optical prototype
+Stable canonical A5 image
+1
+Move printed markers; coordinates remain correct
+Calibration gate
+R2 — ITCH V0 Alpha
+6-piece physical tangible interaction
+2–3
+CAT/DOG-style game on one tablet
+Accuracy + latency
+R3 — ITCH V0 Beta
+A–Z + 0–9; reproducible jig
+2–4
+Spelling + number games
+Hardware reproduction + device matrix
+R4 — Desktop Companion
+Phone sensor + laptop Scratch
+5
+Same project works local/remote
+Provider parity
+R5 — ITCH V1
+Physical drawing capture
+6
+Draw path → Scratch uses path
+Drawing gate
+R6 — ITCH V2.0
+Physical linear code
+8
+Physical commands drive sprite
+Parser/interpreter gate
+R7 — Community release
+Third-party tangible packs
+9
+External pack + examples
+Contributor reproduction
+6. Risk Register
+Risk ID
+Risk
+Impact
+Mitigation
+Trigger / decision
+RSK-001
+Mobile browser + Scratch + camera performance is inadequate
+High
+Worker/offscreen processing; reduce canonical resolution/FPS; profile before ML
+Phase 0/3 benchmark fails
+RSK-002
+Scratch custom-extension distribution requires a maintained fork or non-official environment
+High
+Keep @itch/core independent; minimize Scratch delta; evaluate upstream-compatible paths
+ADR-001
+RSK-003
+Mirror/jig variation causes unstable calibration
+Medium
+Fiducial calibration and parameterized jig; degrade gracefully
+Phase 1 fit matrix
+RSK-004
+Glyph-only classification confuses similar characters
+Medium
+Machine-readable border/marker; pack design constraints; explicit confusion testing
+P2 accuracy below gate
+RSK-005
+Hands occlude tiles during manipulation causing event chatter
+Medium
+Temporal hysteresis; track prediction; short grace period before remove
+T-P2-04
+RSK-006
+iOS camera/browser permission lifecycle differs from Android
+Medium
+Capability adapter; documented supported mode; device matrix
+Phase 0 capability probe
+RSK-007
+Scope expands into general AI vision too early
+High
+Release gates; deterministic packs first; V1.5 separated
+Backlog review
+RSK-008
+Physical code grammar becomes ambiguous
+High
+Machine IDs + IR + strict parser + explicit errors; linear grammar first
+Phase 8 negative tests
+RSK-009
+Community packs break recognition assumptions
+Medium
+Versioned pack capabilities and validation tools; not every pack promises same recognizer
+Phase 9 schema design
+7. Architecture Decision Log (initial)
+ADRs are short documents stored in docs/architecture. Once accepted, they are changed only by superseding ADRs. Initial decisions/open decisions:
+ADR
+Decision
+Status
+Guidance
+ADR-001
+Scratch integration/distribution path
+OPEN in Phase 0
+Prefer minimum fork; validate current scratch-editor extension mechanics.
+ADR-002
+Vision execution thread
+OPEN in Phase 0
+Main thread vs Worker/OffscreenCanvas; benchmark-driven.
+ADR-003
+Workspace fiducial family
+OPEN in Phase 1
+Choose based on robustness, code footprint, licensing, printability.
+ADR-004
+V0 piece identity encoding
+OPEN in Phase 2
+Compare glyph-only vs deterministic visual ID; reliability wins unless UX cost is material.
+ADR-005
+Canonical workspace resolution
+OPEN in Phase 1
+Set from accuracy/performance benchmarks.
+ADR-006
+Remote transport
+DEFER to Phase 5
+Semantic scene transport preferred; QR pairing target.
+ADR-007
+Physical code IR
+DEFER to Phase 8
+Independent of Scratch serialization; interpreter-first.
+8. Test Strategy
+8.1 Test pyramid
+Unit: scene types, row grouping, temporal stabilization, tracking association helpers, schemas, parser.
+Fixture regression: deterministic recorded frames/images → expected detections/scenes/events.
+Integration: LocalTangiblesProvider → @itch/scratch reporters/hats using mocked and replayed scenes.
+Device/browser: camera lifecycle, performance, orientation, permissions, thermal behavior.
+Hardware acceptance: jig fit, calibration, shadows/glare, mirror variants.
+Child/user testing: setup comprehension, manipulation behavior, accidental occlusion, perceived latency, delight/frustration points.
+8.2 Canonical fixture format
+fixtures/<case>/├── metadata.json        # device/camera/lighting/pack├── frames/ or video     # deterministic source├── expected-scenes.json # scene timeline / tolerances└── notes.md             # known edge cases
+Vision outputs often require tolerances rather than exact pixel equality. Tests should compare semantic identity exactly and pose/geometry within documented tolerances. Event timelines should be compared after the same stabilization settings used in production.
+9. Initial Scratch Extension Contract (V0)
+Block names will be validated with children/educators, but the functional contract should remain stable. The extension should expose high-level blocks and a smaller set of raw-object reporters for advanced creators.
+ID
+Requirement
+Priority
+Verification
+Owner/Layer
+SCR-001
+Reporter: current word
+MUST
+Integration
+High-level
+SCR-002
+Boolean: piece [menu] present?
+MUST
+Integration
+High-level
+SCR-003
+Reporter: number of pieces
+MUST
+Integration
+High-level
+SCR-004
+Hat: when scene changes
+MUST
+Event timeline
+Events
+SCR-005
+Hat: when piece placed / removed
+MUST
+Event timeline
+Events
+SCR-006
+Hat: when word changes
+MUST
+Event timeline
+Events
+SCR-007
+Reporter: piece N x/y/angle/id
+SHOULD
+Integration
+Advanced
+SCR-008
+Reporter: ITCH status
+MUST
+Lifecycle
+UX
+SCR-009
+Command: calibrate/recheck workspace only if explicit control is needed; auto-calibration preferred.
+COULD
+UX
+Lifecycle
+
+10. Security, Privacy, and Child-Safety Baseline
+Camera permission must be explicit and controlled by browser/platform permission mechanisms.
+Local mode processes camera data in memory on-device; no default upload, analytics video capture, or image retention.
+Fixture recording is a developer action and should clearly indicate that images/video are being saved.
+No biometric identification, face recognition, emotion inference, or persistent person tracking is part of ITCH.
+Remote mode pairs explicitly and should transmit scene semantics by default. If a future debugging mode streams video, it must be visibly opt-in.
+Published examples should avoid requiring personal identifiers or student accounts to use tangible interaction.
+11. Definition of “MVP”
+ITCH MVP is intentionally narrower than “full alphabet recognition.” The product hypothesis is validated when all of the following are true:
+A tablet/phone running the ITCH-enabled Scratch environment uses its own front camera through a simple mirror jig.
+The A5 mat automatically calibrates and rectifies.
+At least six physical tiles can be recognized, located, and tracked robustly.
+@itch/core produces a stabilized scene and current-word derivation.
+Scratch receives that state through @itch/scratch and runs a child-visible interaction.
+The full loop works locally, without a companion computer or cloud vision service.
+Recorded fixtures reproduce the semantic behavior deterministically.
+Measured performance and accuracy meet the Phase 2/3 gates on the baseline device.
+Only after this MVP gate should the team invest substantially in 36-class recognition, remote pairing, semantic drawing recognition, or physical Scratch-program materialization.
+12. Immediate Next Work Package
+The next implementation sprint should execute Phase 0 only. The expected concrete work order is:
+Create repository/monorepo skeleton and TypeScript package boundaries.
+Implement TangibleScene and TangiblesProvider interfaces plus MockTangiblesProvider.
+Create fixture recorder/replayer skeleton.
+Build a simple same-device camera preview/capability page.
+Create a minimal ITCH Scratch extension that reads MockTangiblesProvider.
+Run the same-device mobile technical spike on at least one iOS/iPadOS and one Android device.
+Write ADR-001 (Scratch integration/distribution) and ADR-002 (threading/canvas strategy) from measured results.
+Only then proceed to Phase 1 calibration.
+13. Change Control for This Roadmap
+This document is intended to be referenced throughout implementation. Changes should preserve IDs whenever possible. If a requirement is removed, mark it deprecated rather than reusing the identifier. New requirements receive new IDs. Suggested versioning:
+v0.x — architecture/prototype period; requirements can evolve with ADRs.
+v1.0 — V0 public-release baseline; compatibility commitments begin.
+Minor roadmap revision — clarifications, new tests, backlog refinement.
+Major roadmap revision — scene/API incompatibility, scope reset, or fundamental architecture change.
+When discussing development, use references such as “implement P1-002”, “T-P2-05 is failing on Android”, or “ADR-004 selected deterministic tile IDs”. This makes the roadmap operational rather than descriptive.
+14. Technical References
+Reference
+URL
+Use in roadmap
+Scratch Editor monorepo
+https://github.com/scratchfoundation/scratch-editor
+Current Scratch source monorepo; scratch-vm was migrated here in 2026.
+Archived scratch-vm repository
+https://github.com/scratchfoundation/scratch-vm
+Documents migration to scratch-editor and remains useful historical context.
+Scratch Foundation GitHub organization
+https://github.com/scratchfoundation
+Open-source repositories and contribution context.
+Scratch extension developer forum
+https://scratch.mit.edu/discuss/48/
+Community discussion and extension development history; not treated as normative API documentation.
+Appendix A — Requirement ID Prefixes
+Prefix
+Meaning
+ARC
+Architecture/package boundary
+NFR
+Cross-cutting non-functional requirement
+P0…P9
+Phase-specific product/technical requirement
+SCR
+Scratch-facing extension contract
+T-Px
+Phase acceptance/regression test
+ADR
+Architecture Decision Record
+RSK
+Risk register item
+Appendix B — Baseline Device Test Matrix Template
+Device
+OS
+Browser
+Camera mode/res
+Capture FPS
+Vision FPS
+Median latency
+Notes
+—
+—
+—
+—
+—
+—
+—
+—
+—
+—
+—
+—
+—
+—
+—
+—
+—
+—
+—
+—
+—
+—
+—
+—
+—
+—
+—
+—
+—
+—
+—
+—
+—
+—
+—
+—
+—
+—
+—
+—

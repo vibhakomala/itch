@@ -1,0 +1,21 @@
+{
+  "specVersion": "0.1-draft",
+  "status": "dimensional-draft-unvalidated",
+  "orientation": "landscape",
+  "widthMm": 210,
+  "heightMm": 148,
+  "origin": "upper-left",
+  "axes": { "x": "right", "y": "down" },
+  "anchorCentersMm": {
+    "topLeft": [12, 12],
+    "topRight": [198, 12],
+    "bottomRight": [198, 136],
+    "bottomLeft": [12, 136]
+  },
+  "placeholderMarkSizeMm": 10,
+  "suggestedPieceAreaMm": { "x": 22, "y": 22, "width": 166, "height": 104 },
+  "fiducialFamily": null,
+  "rectifiedResolutionCandidate": { "width": 840, "height": 592, "status": "ADR-005-open" },
+  "printScale": "100%-actual-size",
+  "recognitionImplemented": false
+}
